@@ -510,6 +510,144 @@ def tela_inicial():
         
         pygame.display.flip()
         
+    linhas = []
+    linha_atual = ""
+    
+    for palavra in palavras:
+        teste_linha = linha_atual + palavra + " "
+        largura_teste, _ = fonte.size(teste_linha)
+        if largura_teste < largura_max:
+            linha_atual = teste_linha
+        else:
+            linhas.append(linha_atual)
+            linha_atual = palavra + " "
+    linhas.append(linha_atual)
+    
+    y_offset = 0
+    for linha in linhas:
+        img_texto = fonte.render(linha, True, cor)
+        superficie.blit(img_texto, (x, y + y_offset))
+        y_offset += 25
+
+async def mostrar_pergunta(id_pergunta):
+    dados = QUESTOES[id_pergunta]
+    rodando_pergunta = True
+    
+    fundo_pergunta = pygame.Surface((700, 500))
+    fundo_pergunta.fill((20, 20, 40)) # Azul muito escuro
+    border = pygame.Rect(0,0,700,500)
+    
+    # Botões de resposta (áreas clicáveis)
+    opcoes_rects = []
+    y_opt = 220
+    for i in range(4):
+        rect = pygame.Rect(70, y_opt, 650, 50)
+        opcoes_rects.append({'rect': rect, 'key': [pygame.K_a, pygame.K_b, pygame.K_c, pygame.K_d][i]})
+        y_opt += 60
+
+    while rodando_pergunta:
+        tela.blit(fundo_pergunta, (50, 50))
+        pygame.draw.rect(tela, BRANCO, (50, 50, 700, 500), 2)
+        
+        # Título
+        titulo = fonte_titulo.render(f"Enigma do Willblackinho {id_pergunta + 1}/4", True, (255, 215, 0))
+        tela.blit(titulo, (70, 70))
+        
+        # Pergunta
+        desenhar_texto_multilinha(dados["pergunta"], fonte_pixel, BRANCO, tela, 70, 120, 650)
+        
+        # Opções
+        y_opt = 220
+        mouse_pos = pygame.mouse.get_pos()
+        
+        for i, opt in enumerate(dados["opcoes"]):
+            # Highlight se mouse em cima
+            cor_texto = (200, 200, 200)
+            if opcoes_rects[i]['rect'].collidepoint(mouse_pos):
+                cor_texto = (255, 255, 0)
+                pygame.draw.rect(tela, (50, 50, 80), opcoes_rects[i]['rect']) # Fundo highlight
+            
+            desenhar_texto_multilinha(opt, fonte_pergunta, cor_texto, tela, 70, y_opt, 650)
+            y_opt += 60
+            
+        instrucao = fonte_pixel.render("Clique ou pressione A, B, C, D", True, AZUL_CEU)
+        tela.blit(instrucao, (70, 480))
+
+        pygame.display.flip()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            
+            resposta_usuario = None
+            
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_a: resposta_usuario = pygame.K_a
+                if event.key == pygame.K_b: resposta_usuario = pygame.K_b
+                if event.key == pygame.K_c: resposta_usuario = pygame.K_c
+                if event.key == pygame.K_d: resposta_usuario = pygame.K_d
+            
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1: # Clique esquerdo
+                    for item in opcoes_rects:
+                        if item['rect'].collidepoint(event.pos):
+                            resposta_usuario = item['key']
+            
+            if resposta_usuario:
+                if resposta_usuario == dados["correta"]:
+                    # Feedback Positivo
+                    return True
+                else:
+                    # Feedback Negativo (Tenta de novo)
+                    aviso = fonte_titulo.render("Ops! Tente de novo!", True, (255, 0, 0))
+                    tela.blit(aviso, (250, 250))
+                    pygame.display.flip()
+                    await asyncio.sleep(1)
+
+        await asyncio.sleep(0)
+
+async def tela_final(nome_jogador):
+    tela.fill(PRETO)
+    msg1 = fonte_titulo.render("PARABÉNS!", True, (255, 215, 0))
+    msg2 = fonte_pixel.render(f"{nome_jogador} completou o ano letivo!", True, BRANCO)
+    msg3 = fonte_pixel.render("Você domina a Transição Energética!", True, AZUL_CEU)
+    
+    tela.blit(msg1, (LARGURA_TELA//2 - msg1.get_width()//2, 200))
+    tela.blit(msg2, (LARGURA_TELA//2 - msg2.get_width()//2, 250))
+    tela.blit(msg3, (LARGURA_TELA//2 - msg3.get_width()//2, 300))
+    
+    pygame.display.flip()
+    await asyncio.sleep(5)
+
+async def tela_inicial():
+    rodando_inicio = True
+    nome = ""
+    
+    while rodando_inicio:
+        tela.fill(AZUL_CEU)
+        
+        # Título
+        titulo = fonte_titulo.render("A Jornada de Willblackinho", True, PRETO)
+        subtitulo = fonte_pixel.render("Digite seu nome para começar:", True, PRETO)
+        
+        tela.blit(titulo, (LARGURA_TELA//2 - titulo.get_width()//2, 150))
+        tela.blit(subtitulo, (LARGURA_TELA//2 - subtitulo.get_width()//2, 250))
+        
+        # Caixa de input
+        input_rect = pygame.Rect(LARGURA_TELA//2 - 150, 300, 300, 50)
+        pygame.draw.rect(tela, BRANCO, input_rect)
+        pygame.draw.rect(tela, PRETO, input_rect, 2)
+        
+        texto_nome = fonte_input.render(nome, True, PRETO)
+        tela.blit(texto_nome, (input_rect.x + 10, input_rect.y + 5))
+        
+        # Instrução
+        instrucao = fonte_pixel.render("Pressione ENTER para jogar", True, (50, 50, 50))
+        tela.blit(instrucao, (LARGURA_TELA//2 - instrucao.get_width()//2, 400))
+        
+        pygame.display.flip()
+        
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -525,11 +663,17 @@ def tela_inicial():
                     # Limita tamanho do nome
                     if len(nome) < 15:
                         nome += event.unicode
+        
+        await asyncio.sleep(0)
 
 # --- LOOP PRINCIPAL DO JOGO ---
 
-def main():
-    nome_jogador = tela_inicial()
+import asyncio
+
+# --- LOOP PRINCIPAL DO JOGO ---
+
+async def main():
+    nome_jogador = await tela_inicial()
     
     jogador = Jogador()
     
@@ -619,8 +763,8 @@ def main():
             # Lança o desafio
             if fase_atual < len(QUESTOES):
                 # Pequeno delay pra não entrar clicando
-                pygame.time.delay(200)
-                sucesso = mostrar_pergunta(fase_atual)
+                await asyncio.sleep(0.2)
+                sucesso = await mostrar_pergunta(fase_atual)
                 if sucesso:
                     fase_atual += 1
                     jogador.ganhar_xp(50)
@@ -632,7 +776,7 @@ def main():
                     
                     # Se acabou as perguntas
                     if fase_atual >= len(QUESTOES):
-                        tela_final(nome_jogador)
+                        await tela_final(nome_jogador)
                         rodando = False
 
         # Desenhar
@@ -667,8 +811,11 @@ def main():
         pygame.display.flip()
         relogio.tick(FPS)
         
+        # Yield control to browser
+        await asyncio.sleep(0)
+        
     pygame.quit()
     sys.exit()
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
